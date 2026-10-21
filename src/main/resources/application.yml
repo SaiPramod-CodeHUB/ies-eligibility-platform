@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: ies-eligibility-platform
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ies}
+    username: ${DB_USER:ies}
+    password: ${DB_PASSWORD:ies}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    default-property-inclusion: non_null
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true          # exposes /health/liveness and /health/readiness
+      show-details: when_authorized
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+ies:
+  # ---------------------------------------------------------------- jurisdictions
+  # Nothing in the code names a state. A deployment declares the jurisdictions it
+  # administers here: the programs it offers, what it calls them locally, and the
+  # time zone its as-of dates are resolved in. FEDERAL is always present as the
+  # baseline, so a jurisdiction listed with no programs inherits the federal set.
+  #
+  # Onboarding a jurisdiction is this block plus, where its numbers differ, an
+  # override below. Code is needed only when its RULES differ (see
+  # rules/cash/ny/NyCashAssistanceRuleSet).
+  default-jurisdiction: ${IES_DEFAULT_JURISDICTION:FEDERAL}
+  jurisdictions:
+    NY:
+      display-name: New York State
+      zone-id: America/New_York
+      program-names:
+        FOOD_ASSISTANCE: Supplemental Nutrition Assistance Program (SNAP)
+        CASH_ASSISTANCE: Temporary Assistance (TA)
+        ENERGY_ASSISTANCE: Home Energy Assistance Program (HEAP)
+    TX:
+      display-name: State of Texas
+      zone-id: America/Chicago
+      program-names:
+        FOOD_ASSISTANCE: SNAP Food Benefits
+        CASH_ASSISTANCE: Temporary Assistance for Needy Families (TANF)
+        # No energy program listed, so Texas does not offer one here and a
+        # request for it returns 409 instead of silently running federal rules.
+  thresholds:
+    # A jurisdiction declares only what differs from the federal baseline and
+    # inherits the rest. These are synthetic figures.
+    overrides:
+      NY:
+        FOOD_RESOURCE_LIMIT: 3000
+      TX:
+        CASH_RESOURCE_LIMIT: 1000
+
+  events:
+    # 'kafka' publishes determination events to a broker; anything else logs them,
+    # so no broker is needed to run or test the determination path.
+    publisher: ${IES_EVENTS_PUBLISHER:logging}
+  retrieval:
+    # Index the synthetic policy and hearing corpora at startup so /assist works
+    # immediately after `docker compose up`.
+    seed: true
+
+spring.kafka:
+  bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+  producer:
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    # acks=all with min.insync.replicas=2 on the topic is what makes a write
+    # durable; acks=1 acknowledges on leader write and loses the record if the
+    # leader dies before replication.
+    acks: all
+    properties:
+      enable.idempotence: true
+      max.in.flight.requests.per.connection: 5
+      retries: 2147483647
+
+logging:
+  level:
+    com.sgopireddy.ies: INFO
