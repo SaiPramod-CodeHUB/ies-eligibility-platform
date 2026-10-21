@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ies-eligibility
+  labels: { app: ies-eligibility }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: ies-eligibility }
+  template:
+    metadata:
+      labels: { app: ies-eligibility }
+    spec:
+      containers:
+        - name: app
+          image: ies-eligibility-platform:0.1.0
+          ports: [{ containerPort: 8080 }]
+          env:
+            - name: DB_URL
+              valueFrom: { secretKeyRef: { name: ies-db, key: url } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: ies-db, key: username } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: ies-db, key: password } }
+          resources:
+            requests: { memory: "512Mi", cpu: "250m" }
+            limits:   { memory: "1Gi",   cpu: "1000m" }
+
+          # Readiness GATES TRAFFIC. Liveness RESTARTS THE POD.
+          # Liveness deliberately checks only /health/liveness, which does NOT
+          # touch the database. A liveness probe that checks a downstream
+          # dependency restarts perfectly healthy pods when that dependency
+          # slows, turning a partial outage into a full one.
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ies-eligibility
+spec:
+  selector: { app: ies-eligibility }
+  ports:
+    - port: 80
+      targetPort: 8080
