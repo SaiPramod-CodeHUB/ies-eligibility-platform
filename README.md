@@ -449,10 +449,10 @@ To publish determination events to a real broker:
 | Database | PostgreSQL 16 · H2 in tests |
 | AI | `LlmClient` / `EmbeddingClient` / `VectorStore` / `Reranker` abstractions with offline defaults |
 | API docs | springdoc OpenAPI 3 |
-| Tests | JUnit 5, AssertJ, Mockito, MockMvc, spring-security-test — **62 tests** |
+| Tests | JUnit 5, AssertJ, Mockito, MockMvc, spring-security-test — **77 tests** |
 | Container | Docker multi-stage, non-root, `MaxRAMPercentage` |
 | Orchestration | Kubernetes manifests, correct readiness/liveness split |
-| CI | GitHub Actions · plus a Jenkinsfile |
+| CI | Jenkinsfile (declarative pipeline) |
 
 ### Why the AI layers are interface-based
 
