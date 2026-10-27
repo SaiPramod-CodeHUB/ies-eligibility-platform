@@ -365,9 +365,17 @@ caseworker is told.
 
 ## Running it
 
+**Prerequisites:** JDK 21, Maven 3.9+, and Docker with Compose. Nothing else —
+no API key, no cloud account.
+
 ```bash
+git clone https://github.com/SaiPramod-CodeHUB/ies-eligibility-platform.git
+cd ies-eligibility-platform
 docker compose up --build
 ```
+
+Compose brings up PostgreSQL 16 and the application together. First build pulls
+images and dependencies, so allow a few minutes; afterwards it starts in seconds.
 
 | | |
 |---|---|
@@ -376,11 +384,32 @@ docker compose up --build
 | Health | http://localhost:8080/actuator/health |
 | Users | `caseworker` / `caseworker` · `supervisor` / `supervisor` |
 
-Tests only — no database, no broker, no API key:
+Stop it with `docker compose down`, or `docker compose down -v` to drop the
+database volume as well.
+
+### Tests only — no database, no broker, no API key
 
 ```bash
-mvn test
+mvn clean verify
 ```
+
+77 tests against H2 and in-memory stand-ins for every external dependency.
+This is the fastest way to see the engine behave without starting anything.
+
+### Without Docker
+
+The application itself needs only a reachable PostgreSQL. Point it at one and
+run the jar:
+
+```bash
+mvn clean package
+DB_URL=jdbc:postgresql://localhost:5432/ies DB_USER=ies DB_PASSWORD=ies \
+  java -jar target/ies-eligibility-platform-0.1.0.jar
+```
+
+`DB_URL`, `DB_USER`, `DB_PASSWORD` and `IES_DEFAULT_JURISDICTION` are the only
+environment variables that matter; all four have defaults in
+`application.yml`.
 
 ### Worked example
 
